@@ -1,0 +1,19 @@
+
+	img {
+		max-width: 20%;
+		min-width: 200px;
+		height: auto;
+		}
+	body {
+		background-color: #d4ebf2;
+		 }
+	.center {
+		border:3px solid;
+		margin:auto;
+		width: 50%;
+		padding: 10px;
+		}
+	div {
+	text-align:center;
+	background-color: lightblue;
+		}
