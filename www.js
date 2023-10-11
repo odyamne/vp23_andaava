@@ -2,8 +2,9 @@ const http = require("http");
 const path=require("path");
 const url=require("url");
 const fs=require("fs");
-const {parse}=require("querystring");
+const querystring=require("querystring");
 const timedate = require("./datetime_ET");
+const dateTimeEn = require("./datetime_en");
 const semester = require("./semesterprogress");
 const pageHead='<!DOCTYPE html>\n<html>\n<head>\n\t<meta charset="utf-8">\n\t<title>Ander Aava, veebiprogrammeerimine</title>\n</head>\n<body>';
 const pageBanner='\n\t<img src="vp_banner.png" alt="lehe banner">\n';
@@ -13,33 +14,38 @@ const pageFoot='\n</body>\n</html>'
 
 http.createServer(function(req, res){
 	if (req.method ==='POST'){
-		// collectRequestData(req, result1 => {
-		// 	res.write(result1);
-		// 	res.end();
-		// )};
-		//Allpool avan tekstifaili kirjutamiseks nii, et kui seda pole, siis luuakse
-		fs.open('public/log.txt', 'a', (err, file)=>{
-			if(err){
-				throw err;
-			}
-			else{
-				fs.appendFile('public/log.txt', 'Tekst lisatud;', (err)=>{
+		collectRequestData(req, result => {
+			console.log(result);
+			//kirjutame andmeid tekstifaili
+			fs.open('public/log.txt', 'a', (err, file)=>{
+				if(err){
+					throw err;
+				}
+				else {
+					//kirjutame faili saadud eesnime ja semikooloni
+					fs.appendFile('public/log.txt', result.firstNameInput + ', ' +  result.lastNameInput + ', ' + dateTimeEn.dateOfTodayEn() + ';', (err)=>{
+						if(err){
+							throw err;
+						}
+						else {
+							console.log('faili kirjutati!');
+						}
+					});
+				}
+				/* fs.close(file, (err)=>{
 					if(err){
 						throw err;
 					}
-					else{
-						res.end("Lisati tekst");
-					}
-				});
-				fs.close(file, (err)=>{
-					if(err){
-						throw err;
-					}
-				});
-			}
+				}); */
+			});
+			//paneme ka brauseris nähtavale, mis nime saime
+			res.writeHead(302, {
+				'Location': '/addNameFormless'
+			  });
+			  res.end();
 		});
 	}
-	/////Ülalolev probleemne!!!! Kui collect ära kustutada, on ok. Muidu appendis paneks nime andmed. NB! Süntaksile erilist tähelepanu pidada.
+	/////Ülalolev probleemne(nüüd korras)!!!! Kui collect ära kustutada, on ok. Muidu appendis paneks nime andmed. NB! Süntaksile erilist tähelepanu pidada.
 	else{
 		console.log(url.parse(req.url, true));
 		let currentURL=url.parse(req.url, true);
@@ -64,18 +70,82 @@ http.createServer(function(req, res){
 			res.write(pageHead);
 			res.write(pageBanner);
 			res.write(pageBody);
+			res.write('<p><a href="addNameValues">Nimesisestus andmed log.txt-st></a></p>');
 			res.write("<p>Palun lisa oma nimi</p>");
-			res.write('<form method="post"><label for="nameInput">Eesnimi</label><input type="text" id="nameInput" name="nameInput" placeholder="Sinu eesnimi ..."><br><label for="lastnameInput">Perekonnanimi</label><input type="text" id="lastnameInput" name="lastnameInput" placeholder="Sinu perekonnanimi ..."><br><input type="submit" name="nameSubmit" value="Salvesta"></form>');
+			res.write('<form method="post"><label for="firstNameInput">Eesnimi</label>\n\t<input type="text" id="firstNameInput" name="firstNameInput" placeholder="Sinu eesnimi ..."><br><label for="lastNameInput">Perekonnanimi</label>\n\t<input type="text" id="lastNameInput" name="lastNameInput" placeholder="Sinu perekonnanimi ..."><br><br><input type="submit" name="nameSubmit" value="Salvesta"></form>');
+			res.write(pageFoot);
+			//e see valmis ja saadetaks
+			return res.end();
+		
+		}
+
+		else if (currentURL.pathname==="/addNameFormless"){
+			res.writeHead(200, {"Content-Type":"text/html"});
+			res.write(pageHead);
+			res.write(pageBanner);
+			res.write(pageBody);
+			res.write('<p><a href="addName">Tagasi nime sisestuse vormile..></a></p>');
+			res.write('<p><a href="addNameValues">Nimesisestus andmed log.txt-st></a></p>');
 			res.write(pageFoot);
 			//e see valmis ja saadetaks
 			return res.end();
 		}
+
+		else if (currentURL.pathname === "/addNameValues") {
+			fs.readFile('public/log.txt', 'utf8', (err, data) => {
+			   if (err) {
+				 throw err;
+			   }
+				const allData = data.split(';');
+				let extractedData = [];
+			  
+				for (let i = 0; i < allData.length; i++) {
+					if (allData[i]) {
+						extractedData.push(allData[i].split(","));
+					}
+				}
+			  
+			  console.log(extractedData);
+			  });
+		
+			res.write(pageHead);
+		 	res.write(pageBanner);
+		 	res.write(pageBody);
+			res.write('<p><a href="addName">Tagasi nime sisestuse vormile..></a></p>');
+		 	res.write(pageFoot);
+			return res.end();
+		}
+		//	Keerukam versioon üleval, tagastab konsoolile massiivid, allolev lehele listina
+		//	else if (currentURL.pathname === "/addNameFormless") {
+		//		fs.readFile('log.txt', 'utf8', (err, data) => {
+		//			if (err) {
+		// 		 		throw error;
+		//			}
+		//
+		//			const values = data.split(';');	   
+		//			res.writeHead(200, {"Content-Type":"text/html"});
+		//			res.write(pageHead);
+		//			res.write(pageBanner);
+		//			res.write(pageBody);
+		//			res.write('<ul>');
+		// 	   // näita väärtuseid html-s, <ul> vahel prinditakse <li> elemendid
+		//			values.forEach(value => {
+		// 				res.write(`<li>${value}</li>`);
+		//			});
+		//			res.write('</ul>');
+		//			res.write('<p><a href="addName">Tagasi nime sisestuse vormile..></a></p>');
+		//			res.write(pageFoot);
+		   
+		// 	   //et see valmis ja saadetaks
+		//			return res.end();
+		//		});
+		//	}
 		else if (currentURL.pathname==="/semesterprogress"){
 			res.writeHead(200, {"Content-Type":"text/html"});
 			res.write(pageHead);
 			res.write(pageBanner);
 			res.write(pageBody);
-			res.write("<p>" + semester.result + "</p>");
+			res.write("<p>" + semester.endOutput + "</p>");
 			res.write("<meter min='0' value='" + semester.semesterLastedFor + "' max='" + semester.semesterDuration + "'></meter>")
 			res.write(pageFoot);
 			//et see valmis ja saadetaks
@@ -167,7 +237,7 @@ function collectRequestData(request, callback) {
             receivedData += chunk.toString();
         });
         request.on('end', () => {
-            callback(parse(receivedData));
+            callback(querystring.decode(receivedData));
         });
     }
     else {
